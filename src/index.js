@@ -243,8 +243,7 @@ export const removeEntity = (editorState, type) => {
 export const entityManager = entityObj => editorState => {
   const { blockKey, charOffset, data, entityKey } = findFirstEntityOfTypeInRange(entityObj.type, editorState);
   const contentState = editorState.getCurrentContent();
-  const sameType = entityKey && !!entityKeyHasType(contentState, entityKey, entityObj.type);
-  console.log('actual', !!entityKey && contentState.getEntity(entityKey).getType());
+  const sameType = entityKey && entityKeyHasType(contentState, entityKey, entityObj.type);
   const create =
     newData => createEntity(editorState, entityObj, { ...entityObj.data, ...newData });
   const merge = (newData = entityObj.data) => mergeEntityData(editorState, entityKey, newData);
@@ -256,7 +255,7 @@ export const entityManager = entityObj => editorState => {
     merge: sameType ? merge : create,
     set: sameType ? set : create,
     remove,
-    exists: entityKey,
+    exists: sameType,
     charOffset,
     data,
     entityKey,
@@ -277,7 +276,6 @@ const linkEntityObj = {
 export const link = entityManager(linkEntityObj);
 
 export const linkStrategy = (contentBlock, callback, contentState) => {
-  console.log('links strategy running');
   contentBlock.findEntityRanges(
     character => {
       const entityKey = character.getEntity();

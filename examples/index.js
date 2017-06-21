@@ -26,7 +26,10 @@ class RichEditor extends React.Component {
     super(props);
     this.state = {
       editorState: new Raw()
-        .addBlock('Hello World', 'header-two')
+        .addBlock('Block 1', 'header-two')
+        .addBlock('Block 2', 'header-two')
+        .addBlock('Block 3', 'header-two')
+        .addBlock('Block 4', 'header-two')
         .toEditorState(decorators),
       readOnly: false,
     };
@@ -55,35 +58,35 @@ class RichEditor extends React.Component {
         justifyContent: 'center',
         margin: '0 auto',
       }}>
-        <div style={{ flex: '0 0 200px' }}>
-          <div>
+        <div style={{ flex: '0 0 200px' , padding: '0 10px' }}>
+          <div style={{display: 'flex', flexDirection: 'column'}}>
             <h2>Links</h2>
             <button onClick={createLink}>
-              <span>Create</span>
+              <span>Create Link</span>
             </button>
             <button onClick={setLink}>
-              <span>Set</span>
+              <span>Set Link</span>
             </button>
             <button onClick={mergeLink}>
-              <span>Merge</span>
+              <span>Merge Link</span>
             </button>
             <button onClick={removeLink}>
-              <span>Remove</span>
+              <span>Remove link</span>
             </button>
           </div>
-          <div>
+          <div style={{display: 'flex', flexDirection: 'column'}}>
             <h2>Colors</h2>
             <button onClick={createColor}>
-              <span>red</span>
+              <span>create red</span>
             </button>
             <button onClick={mergeColor}>
-              <span>blue</span>
+              <span>merge blue</span>
             </button>
             <button onClick={setColor}>
-              <span>green</span>
+              <span>set green</span>
             </button>
             <button onClick={removeColor}>
-              <span>Remove</span>
+              <span>Remove color</span>
             </button>
           </div>
         </div>
