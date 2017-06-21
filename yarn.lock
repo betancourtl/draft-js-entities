@@ -1654,21 +1654,11 @@ dot-prop@^4.1.0:
   dependencies:
     is-obj "^1.0.0"
 
-draft-js-export-html@0.5.2:
-  version "0.5.2"
-  resolved "https://registry.yarnpkg.com/draft-js-export-html/-/draft-js-export-html-0.5.2.tgz#089e55ce06d5aed0dbd9af5eee2eb56c58a1c428"
-  dependencies:
-    draft-js-utils "^0.1.5"
-
-draft-js-raw-content-state@1.0.3:
-  version "1.0.3"
-  resolved "https://registry.yarnpkg.com/draft-js-raw-content-state/-/draft-js-raw-content-state-1.0.3.tgz#352343170177f672f45d0f8d03682f72de5e987d"
+draft-js-raw-content-state@1.0.7:
+  version "1.0.7"
+  resolved "https://registry.yarnpkg.com/draft-js-raw-content-state/-/draft-js-raw-content-state-1.0.7.tgz#33d0566930923a5b550d568f94a2a6c5ff64e9af"
   dependencies:
     draft-js "0.10.1"
-
-draft-js-utils@^0.1.5:
-  version "0.1.7"
-  resolved "https://registry.yarnpkg.com/draft-js-utils/-/draft-js-utils-0.1.7.tgz#e2b6927ca620edf1855a4bfc1cf1d21080a70f16"
 
 draft-js@0.10.0:
   version "0.10.0"
@@ -3151,10 +3141,6 @@ lodash.bind@^4.1.4:
   version "4.2.1"
   resolved "https://registry.yarnpkg.com/lodash.bind/-/lodash.bind-4.2.1.tgz#7ae3017e939622ac31b7d7d7dcb1b34db1690d35"
 
-lodash.camelcase@4.3.0:
-  version "4.3.0"
-  resolved "https://registry.yarnpkg.com/lodash.camelcase/-/lodash.camelcase-4.3.0.tgz#b28aa6288a2b9fc651035c7711f65ab6190331a6"
-
 lodash.camelcase@^3.0.1:
   version "3.0.1"
   resolved "https://registry.yarnpkg.com/lodash.camelcase/-/lodash.camelcase-3.0.1.tgz#932c8b87f8a4377897c67197533282f97aeac298"
@@ -3214,10 +3200,6 @@ lodash.reduce@^4.4.0:
 lodash.reject@^4.4.0:
   version "4.6.0"
   resolved "https://registry.yarnpkg.com/lodash.reject/-/lodash.reject-4.6.0.tgz#80d6492dc1470864bbf583533b651f42a9f52415"
-
-lodash.snakecase@4.1.1:
-  version "4.1.1"
-  resolved "https://registry.yarnpkg.com/lodash.snakecase/-/lodash.snakecase-4.1.1.tgz#39d714a35357147837aefd64b5dcbb16becd8f8d"
 
 lodash.some@^4.4.0:
   version "4.6.0"
@@ -4158,7 +4140,7 @@ prop-types@15.5.0-alpha.0:
   dependencies:
     fbjs "^0.8.9"
 
-prop-types@~15.5.0:
+prop-types@^15.5.10, prop-types@~15.5.0:
   version "15.5.10"
   resolved "https://registry.yarnpkg.com/prop-types/-/prop-types-15.5.10.tgz#2797dfc3126182e3a95e3dfbb2e893ddd7456154"
   dependencies:

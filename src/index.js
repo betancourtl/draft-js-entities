@@ -1,3 +1,5 @@
+import React from 'react';
+import PropTypes from 'prop-types';
 import { EditorState, Modifier } from 'draft-js';
 import { Map } from 'immutable';
 
@@ -56,8 +58,6 @@ export const sliceSelectedBlockCharacters = (block, selection) => {
   };
 };
 
-// TODO: [] Test
-
 export const getSelectedBlocks = editorState => {
   const contentState = editorState.getCurrentContent();
   const blockMap = contentState.getBlockMap();
@@ -106,7 +106,7 @@ export const findFirstEntityOfTypeInRange = (entityType, editorState) => {
 };
 
 // src
-export const createEntity = (editorState, entity, data) => {
+export const createEntity = (editorState, entity, data = {}) => {
   const mutability = entity.mutability;
   const type = entity.type;
   const entityData = data || entity.data;
@@ -139,31 +139,41 @@ export const setEntityData = (editorState, entityKey, newObj) => {
 };
 
 // TODO: [] More tests on this
-export const removeEntity = (editorState, entityType) => {
-  const contentState = Modifier.applyEntity(
-    editorState.getCurrentContent(),
-    editorState.getSelection(),
+export const removeEntity = editorState => {
+  const selection = editorState.getSelection();
+  const contentState = editorState.getCurrentContent();
+  const isCollapsed = selection.isCollapsed();
+
+  if (!isCollapsed) {
+    const newContentState = Modifier.applyEntity(contentState, selection, null);
+    return EditorState.push(editorState, newContentState, 'apply-entity');
+  }
+
+  // collapsed
+  const offset = selection.getStartOffset();
+  const startKey = selection.getStartKey();
+  const blockLength = contentState.getBlockForKey(startKey).getLength();
+
+  if (!(offset < blockLength)) return editorState;
+
+  const newContentState = Modifier.applyEntity(
+    contentState,
+    selection.merge({
+      anchorOffset: offset,
+      focusOffset: offset + 1,
+    }),
     null,
   );
 
-  return EditorState.push(editorState, contentState, 'apply-entity');
+  return EditorState.push(editorState, newContentState, 'apply-entity');
 };
 
-const linkEntityObj = {
-  type: 'LINK',
-  mutability: 'MUTABLE',
-  data: {
-    url: '',
-    target: '',
-  },
-};
-
-export const entity = entityObj => editorState => {
+export const entityManager = entityObj => editorState => {
   const { blockKey, charOffset, data, entityKey } = findFirstEntityOfTypeInRange(entityObj.type, editorState);
-  const create = newData => createEntity(editorState, entityObj, newData);
-  const merge = newData => mergeEntityData(editorState, entityKey, newData);
-  const set = newData => setEntityData(editorState, entityKey, newData);
-  const remove = removeEntity(editorState, entityObj.type);
+  const create = newData => createEntity(editorState, entityObj, { ...entityObj.data, ...newData });
+  const merge = (newData = entityObj.data) => mergeEntityData(editorState, entityKey, newData);
+  const set = (newData = entityObj.data) => setEntityData(editorState, entityKey, newData);
+  const remove = () => removeEntity(editorState, entityObj.type);
 
   return {
     create,
@@ -178,4 +188,45 @@ export const entity = entityObj => editorState => {
   };
 };
 
-const linkEntity = entity(linkEntityObj);
+// implementations
+const linkEntityObj = {
+  type: 'LINK',
+  mutability: 'MUTABLE',
+  data: {
+    url: '',
+    target: '',
+  },
+};
+
+export const link = entityManager(linkEntityObj);
+
+export const linkStrategy = (contentBlock, callback, contentState) => {
+  contentBlock.findEntityRanges(
+    character => {
+      const entityKey = character.getEntity();
+      if (!entityKey) return false;
+      const entity = contentState.getEntity(entityKey);
+      return entity.getType() === linkEntityObj.type;
+    },
+    callback,
+  );
+};
+
+export const LinkEntityDecorator = ({ contentState, entityKey, children }) => {
+  const entity = contentState.getEntity(entityKey);
+  const data = entity.get('data');
+  const url = data.url;
+  const target = data.target;
+
+  return (
+    <a href={url} target={target}>
+      {children}
+    </a>
+  );
+};
+
+LinkEntityDecorator.propTypes = {
+  contentState: PropTypes.object.isRequired,
+  entityKey: PropTypes.string.isRequired,
+  children: PropTypes.node,
+};

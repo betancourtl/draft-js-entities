@@ -7,7 +7,7 @@ import {
   removeEntity,
   getEntityRangesOfType,
   findFirstEntityOfTypeInRange,
-  entity,
+  entityManager,
 } from '../src';
 
 // types
@@ -32,7 +32,7 @@ const linkEntity = {
 };
 
 const findLinkEntityRanges = getEntityRangesOfType(entityType.link);
-const linkEntityManger = entity(linkEntity);
+const linkEntityManger = entityManager(linkEntity);
 
 describe('draft-js-entities', () => {
   describe('getEntityRangesOfType', () => {

@@ -40,7 +40,7 @@
     "babel-preset-stage-1": "^6.1.18",
     "chai": "^3.5.0",
     "css-loader": "0.25.0",
-    "draft-js-raw-content-state": "1.0.3",
+    "draft-js-raw-content-state": "1.0.7",
     "enzyme": "2.5.1",
     "eslint": "3.7.0",
     "eslint-config-airbnb": "12.0.0",
@@ -65,7 +65,8 @@
   },
   "dependencies": {
     "draft-js": "0.10.0",
-    "immutable": "3.8.1"
+    "immutable": "3.8.1",
+    "prop-types": "^15.5.10"
   },
   "bugs": {
     "url": "https://github.com/webdeveloperpr/draft-js-custom-styles/issues"
