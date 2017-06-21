@@ -1,9 +1,67 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { EditorState, Modifier } from 'draft-js';
+import { EditorState, Modifier, CharacterMetadata } from 'draft-js';
 import { Map } from 'immutable';
 
 // utils
+
+// This functionality has been taken from draft-js and modified for re-usability purposes.
+// Maps over the selected characters, and applies a function to each character.
+// Characters are of type CharacterMetadata. Look up the draftJS API to see what
+// operations can be performed on characters. You must return the characters back
+// so they can be merged into the block.
+export const mapSelectedCharacters = callback => editorState => {
+  const contentState = editorState.getCurrentContent();
+  const selectionState = editorState.getSelection();
+  const blockMap = contentState.getBlockMap();
+  const startKey = selectionState.getStartKey();
+  const startOffset = selectionState.getStartOffset();
+  const endKey = selectionState.getEndKey();
+  const endOffset = selectionState.getEndOffset();
+
+  const newBlocks = blockMap.skipUntil((_, k) => {
+    return k === startKey;
+  }).takeUntil((_, k) => {
+    return k === endKey;
+  }).concat(Map([[endKey, blockMap.get(endKey)]])).map((block, blockKey) => {
+    let sliceStart;
+    let sliceEnd;
+
+    // sliceStart -> where the selection starts
+    // endSlice -> Where the selection ends
+
+    // Only 1 block selected
+    if (startKey === endKey) {
+      sliceStart = startOffset;
+      sliceEnd = endOffset;
+      // Gets the selected characters of the block when multiple blocks are selected.
+    } else {
+      sliceStart = blockKey === startKey ? startOffset : 0;
+      sliceEnd = blockKey === endKey ? endOffset : block.getLength();
+    }
+
+    // Get the characters of the current block
+    let chars = block.getCharacterList();
+    let current;
+    while (sliceStart < sliceEnd) {
+      current = chars.get(sliceStart);
+      const newChar = callback(current, editorState);
+      chars = chars.set(sliceStart, newChar);
+      sliceStart += 1;
+    }
+
+    return block.set('characterList', chars);
+  });
+
+  const newContentState = contentState.merge({
+    blockMap: blockMap.merge(newBlocks),
+    selectionBefore: selectionState,
+    selectionAfter: selectionState,
+  });
+
+  return EditorState.push(editorState, newContentState, 'apply-entity');
+};
+
 export const getEntityRangesOfType = type => (block, contentState) => {
   let ranges = [];
   const callback = (start, end) => ranges.push({ start, end });
@@ -107,45 +165,19 @@ export const findFirstEntityOfTypeInRange = (entityType, editorState) => {
 
 // src
 export const createEntity = (editorState, entity, data = {}) => {
+  console.log('create');
   const mutability = entity.mutability;
   const type = entity.type;
   const entityData = data || entity.data;
-  const contentStateWithEntity = editorState
-    .getCurrentContent()
-    .createEntity(type, mutability, entityData);
-  const entityKey = contentStateWithEntity.getLastCreatedEntityKey();
 
-  const newContentState = Modifier.applyEntity(
-    contentStateWithEntity,
-    editorState.getSelection(),
-    entityKey,
-  );
-
-  return EditorState.push(editorState, newContentState, 'apply-entity');
-};
-
-export const mergeEntityData = (editorState, entityKey, newObj) => {
-  const contentState = editorState.getCurrentContent();
-  const newContentState = contentState.mergeEntityData(entityKey, newObj);
-
-  return EditorState.push(editorState, newContentState, 'apply-entity');
-};
-
-export const setEntityData = (editorState, entityKey, newObj) => {
-  const contentState = editorState.getCurrentContent();
-  const newContentState = contentState.replaceEntityData(entityKey, newObj);
-
-  return EditorState.push(editorState, newContentState, 'apply-entity');
-};
-
-// TODO: [] More tests on this
-export const removeEntity = editorState => {
   const selection = editorState.getSelection();
   const contentState = editorState.getCurrentContent();
-  const isCollapsed = selection.isCollapsed();
 
-  if (!isCollapsed) {
-    const newContentState = Modifier.applyEntity(contentState, selection, null);
+  const contentStateWithEntity = contentState.createEntity(type, mutability, entityData);
+  const entityKey = contentStateWithEntity.getLastCreatedEntityKey();
+
+  if (!selection.isCollapsed()) {
+    const newContentState = Modifier.applyEntity(contentStateWithEntity, selection, entityKey);
     return EditorState.push(editorState, newContentState, 'apply-entity');
   }
 
@@ -154,31 +186,75 @@ export const removeEntity = editorState => {
   const startKey = selection.getStartKey();
   const blockLength = contentState.getBlockForKey(startKey).getLength();
 
-  if (!(offset < blockLength)) return editorState;
+  if (!blockLength || !(offset < blockLength)) return editorState;
 
   const newContentState = Modifier.applyEntity(
-    contentState,
+    contentStateWithEntity,
     selection.merge({
       anchorOffset: offset,
       focusOffset: offset + 1,
     }),
-    null,
+    entityKey,
   );
 
   return EditorState.push(editorState, newContentState, 'apply-entity');
 };
 
+export const mergeEntityData = (editorState, entityKey, newObj) => {
+  console.log('merge');
+  const contentState = editorState.getCurrentContent();
+  const newContentState = contentState.mergeEntityData(entityKey, newObj);
+
+  // Need to force the selection to see changes
+  return EditorState.forceSelection(
+    EditorState.push(editorState, newContentState, 'apply-entity'),
+    editorState.getSelection()
+  );
+};
+
+export const setEntityData = (editorState, entityKey, newObj) => {
+  console.log('set');
+  const contentState = editorState.getCurrentContent();
+  const newContentState = contentState.replaceEntityData(entityKey, newObj);
+
+  // Need to force the selection to see changes
+  return EditorState.forceSelection(
+    EditorState.push(editorState, newContentState, 'apply-entity'),
+    editorState.getSelection()
+  );
+};
+
+const removeCharEntityOfType = type => (char, editorState) => {
+  const entityKey = char.getEntity();
+  if (!entityKey) return char;
+
+  if (editorState.getCurrentContent().getEntity(entityKey).getType() !== type) {
+    return char;
+  }
+
+  return CharacterMetadata.applyEntity(char, null);
+};
+
+// TODO: [] More tests on this
+export const removeEntity = (editorState, type) => {
+  return mapSelectedCharacters(removeCharEntityOfType(type))(editorState);
+};
+
 export const entityManager = entityObj => editorState => {
   const { blockKey, charOffset, data, entityKey } = findFirstEntityOfTypeInRange(entityObj.type, editorState);
-  const create = newData => createEntity(editorState, entityObj, { ...entityObj.data, ...newData });
+  const contentState = editorState.getCurrentContent();
+  const sameType = entityKey && !!entityKeyHasType(contentState, entityKey, entityObj.type);
+  console.log('actual', !!entityKey && contentState.getEntity(entityKey).getType());
+  const create =
+    newData => createEntity(editorState, entityObj, { ...entityObj.data, ...newData });
   const merge = (newData = entityObj.data) => mergeEntityData(editorState, entityKey, newData);
   const set = (newData = entityObj.data) => setEntityData(editorState, entityKey, newData);
   const remove = () => removeEntity(editorState, entityObj.type);
 
   return {
     create,
-    merge: entityKey ? merge : create,
-    set: entityKey ? set : create,
+    merge: sameType ? merge : create,
+    set: sameType ? set : create,
     remove,
     exists: entityKey,
     charOffset,
@@ -201,6 +277,7 @@ const linkEntityObj = {
 export const link = entityManager(linkEntityObj);
 
 export const linkStrategy = (contentBlock, callback, contentState) => {
+  console.log('links strategy running');
   contentBlock.findEntityRanges(
     character => {
       const entityKey = character.getEntity();
@@ -213,6 +290,7 @@ export const linkStrategy = (contentBlock, callback, contentState) => {
 };
 
 export const LinkEntityDecorator = ({ contentState, entityKey, children }) => {
+
   const entity = contentState.getEntity(entityKey);
   const data = entity.get('data');
   const url = data.url;
@@ -226,6 +304,47 @@ export const LinkEntityDecorator = ({ contentState, entityKey, children }) => {
 };
 
 LinkEntityDecorator.propTypes = {
+  contentState: PropTypes.object.isRequired,
+  entityKey: PropTypes.string.isRequired,
+  children: PropTypes.node,
+};
+
+// implementations
+const colorEntityObj = {
+  type: 'COLOR',
+  mutability: 'MUTABLE',
+  data: {
+    color: '',
+  },
+};
+
+export const color = entityManager(colorEntityObj);
+
+export const colorStrategy = (contentBlock, callback, contentState) => {
+  // console.log('strategy running');
+  contentBlock.findEntityRanges(
+    character => {
+      const entityKey = character.getEntity();
+      if (!entityKey) return false;
+      const entity = contentState.getEntity(entityKey);
+      return entity.getType() === colorEntityObj.type;
+    },
+    callback,
+  );
+};
+
+export const ColorEntityDecorator = ({ contentState, entityKey, children }) => {
+  const entity = contentState.getEntity(entityKey);
+  const data = entity.get('data');
+
+  return (
+    <span style={{ color: data.color }}>
+      {children}
+    </span>
+  );
+};
+
+ColorEntityDecorator.propTypes = {
   contentState: PropTypes.object.isRequired,
   entityKey: PropTypes.string.isRequired,
   children: PropTypes.node,
