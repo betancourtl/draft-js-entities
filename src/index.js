@@ -151,7 +151,7 @@ export const findFirstEntityOfTypeInRange = (entityType, editorState) => {
   selectedBlocks.some(block => {
     const { offset, blockKey } = sliceSelectedBlockCharacters(block, selection);
     let charOffset = offset.start - 1;
-    while (charOffset++ <= offset.end) {
+    while (charOffset++ < offset.end) {
       const entityKey = block.getEntityAt(charOffset);
       if (!entityKey || !entityKeyHasType(contentState, entityKey, entityType)) continue;
       const data = entityKeyData(contentState, entityKey);
@@ -188,6 +188,7 @@ export const createEntity = (editorState, entity, data = {}) => {
 
   if (!blockLength || !(offset < blockLength)) return editorState;
 
+  // we want to make a selection so we can apply
   const newContentState = Modifier.applyEntity(
     contentStateWithEntity,
     selection.merge({
@@ -197,7 +198,12 @@ export const createEntity = (editorState, entity, data = {}) => {
     entityKey,
   );
 
-  return EditorState.push(editorState, newContentState, 'apply-entity');
+  const newEditorState = EditorState.push(editorState, newContentState, 'apply-entity');
+
+  // we want to make a selection back to what it originally was so we can apply
+  return EditorState.forceSelection(newEditorState, newEditorState.getSelection().merge({
+    focusOffset: offset,
+  }));
 };
 
 export const mergeEntityData = (editorState, entityKey, newObj) => {
@@ -237,7 +243,32 @@ const removeCharEntityOfType = type => (char, editorState) => {
 
 // TODO: [] More tests on this
 export const removeEntity = (editorState, type) => {
-  return mapSelectedCharacters(removeCharEntityOfType(type))(editorState);
+  const selection = editorState.getSelection();
+  if (!selection.isCollapsed()) {
+    return mapSelectedCharacters(removeCharEntityOfType(type))(editorState);
+  }
+
+  const contentState = editorState.getCurrentContent();
+  const offset = selection.getStartOffset();
+  const startKey = selection.getStartKey();
+  const blockLength = contentState.getBlockForKey(startKey).getLength();
+
+  const newEditorState = EditorState.acceptSelection(
+    editorState,
+    editorState.getSelection().merge({
+      anchorOffset: offset,
+      focusOffset: offset + 1,
+    }),
+  );
+
+  if (!blockLength || !(offset < blockLength)) return editorState;
+
+  const newerEditorState = mapSelectedCharacters(removeCharEntityOfType(type))(newEditorState);
+
+  // we want to make a selection back to what it originally was so we can apply
+  return EditorState.forceSelection(newerEditorState, newerEditorState.getSelection().merge({
+    focusOffset: offset,
+  }));
 };
 
 export const entityManager = entityObj => editorState => {
